@@ -1,299 +1,384 @@
-const express = require("express")
-const cors = require("cors");
-const mysql = require("mysql");
-const bodyParse = require("body-parser");
-const app = express()
-const session = require("express-session")
-const path = require('path')
-const bcrypt = require('bcrypt');
-const { error } = require("console");
-app.use(cors({origin:'http://localhost:5173',
-methods:["POST","DELETE","UPDATE","GET"],
-credentials:true
+const express = require('express');
+const mysql = require('mysql');
+const bodyParser = require('body-parser');
+const cors = require ('cors')
+const app = express();
+
+
+
+
+
+
+app.use(cors({
+  origin: 'http://localhost:5173', // Replace with your frontend URL
+  credentials: true, // Allow credentials (cookies, sessions)
 }));
 
-app.use(session({
-secret:"uwayodavid",
-resave:false,
-saveUninitialized:false,
-cookie:{secure:false}
-}));
-app.use (bodyParse.urlencoded({extended:true}));
-app.use(bodyParse.json());
+app.use(express.json());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 const db = mysql.createConnection({
-host:"localhost",
-user:"root",
-password:'',
-database:"final"
-})
-
-db.connect(err=>{
-if(err){
-console.log('you are not connected to database');
-
-}
-else{
-console.log('you are conncted to database');
-
-}
-
-app.post('/register',(req , res)=>{
-const {username , email, password} = req.body;
-const hashpassword = bcrypt.hashSync(password,10)
-const sql = 'INSERT into users (username,email,password) values(?,?,?)';
-db.query(sql,[username,email,hashpassword],(err,data)=>{
-if(!err){   zzzzzv
-res.status(200).send({
-status:200,
-data:data,
-message:"you are registed"
-})
-}
-else{
-res.status(500).send({
-status:500,
-data:data,
-message:"insert fails"
-
-})
-}
-})
-
-})
-})
-
-app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-
-    const sql = `SELECT * FROM users WHERE email = ?`;
-    db.query(sql, [email], async (err, result) => {
-        if (err) {
-            return res.status(500).send({
-                data: err,
-                status: 500,
-                message: "Internal server error"
-            });
-        }
-
-        if (result.length > 0) {
-            const user = result[0];
-            try {
-                const isPasswordMatch = await bcrypt.compare(password, user.password); // Await inside async function
-
-                if (isPasswordMatch) {
-                    req.session.userlogin = true;
-                    req.session.userId = user.id;
-                    req.session.username = user.username;
-                    return res.status(200).send({
-                        data: { email: user.email, username: user.username },
-                        status: 200,
-                        message: "Login successful"
-                    });
-                } else {
-                    return res.status(401).send({
-                        status: 401,
-                        message: "Invalid email or password"
-                    });
-                }
-            } catch (error) {
-                return res.status(500).send({
-                    status: 500,
-                    message: "Error comparing passwords",
-                    error
-                });
-            }
-        } else {
-            return res.status(401).send({
-                status: 401,
-                message: "Invalid email or password"
-            });
-        }
-    });
+  host: 'localhost',
+  user:"root",
+    password: '',
+    database: 'crpms'
+});
+// Connect to the database
+db.connect((err) => {
+  if (err) {
+    console.error('Error connecting to the database:', err);
+    return;
+  }
+  console.log('Connected to the database');
 });
 
-app.get('/logout',(req,res)=>{
-req.session.destroy(err=>{
-if(err){
-return res.send.status(500)({
-status:500,
-message:"internal serve error",err
-})
 
-}
-else{
-res.status(200).send({
-status:200,
-message:"logout successfull"
-})
-}
-})
-})
 
-app.post('/update/:id',(req,res)=>{
-const {id} = req.params
-const {productName , productPrice } = req.body
-const sql = `UPDATE products SET productName=?, productPrice=? WHERE pid=?`
-db.query(sql,[productName,productPrice,id],(err,result)=>{
-if(err){
-res.status(500).send({
-status:500,
-message:"internal server error",
-error:err
-})
-}
-else{
-res.status(200).send({
-status:200,
-message:"product updated successfully"
-})
-}
-})
-}
-)   
-app.post('/delete/:id',(req,res)=>{
-const {id} = req.params
-const sql = `DELETE FROM products WHERE pid=?`
-db.query(sql,[id],(err,result)=>{
-if(err){
-res.status(500).send({
-status:500,
-message:"internal server error",
-error:err
-})
-}
-else{
-res.status(200).send({
-status:200,
-message:"product deleted successfully"
-})
-}
-})
-}
-)
-app.post('/addProduct',(req,res)=>{
+// Insert data into the Service table
+app.post('/addservice', (req, res) => {
+  const { ServiceCode, ServiceNumber, ServicePrice } = req.body;
+  const sql = 'INSERT INTO Service (ServiceCode, ServiceNumber, ServicePrice) VALUES (?, ?, ?)';
+  db.query(sql, [ServiceCode, ServiceNumber, ServicePrice], (err, result) => {
+    if (err) {
+      console.error('Error inserting data into the Service table:', err);
+      res.status(500).json({ error: 'Error inserting data into the Service table' });
+      return;
+    }
+    res.status(200).json({ message: 'Data inserted successfully into Service table', result });
+  });
+});
 
-    if (!req.session.userlogin) {
-        return res.status(401).send({
-            status: 401,
-            message: "Unauthorized: Please log in to add a product"
+app.post('/addcar', (req, res) => {
+  const { PlateNumber, type, Model, ManufacturingYear, DriverPhone, MechanicName } = req.body;
+  const sql = 'INSERT INTO Car (PlateNumber, type, Model, ManufacturingYear, DriverPhone, MechanicName) VALUES (?, ?, ?, ?, ?, ?)';
+  db.query(sql, [PlateNumber, type, Model, ManufacturingYear, DriverPhone, MechanicName], (err, result) => {
+    if (err) {
+      console.error('Error inserting data into the Car table:', err);
+      res.status(500).json({ error: 'Error inserting data into the Car table' });
+      return;
+    }
+    res.status(200).json({ message: 'Car added successfully', result });
+  });
+});
+
+// Insert data into the ServiceRecord table
+app.post('/addservicerecord', (req, res) => {
+  const { RecordNumber, ServiceDate, ServiceCode, PlateNumber } = req.body;
+
+  // Check if ServiceCode exists
+  const checkServiceSql = 'SELECT * FROM Service WHERE ServiceCode = ?';
+  db.query(checkServiceSql, [ServiceCode], (err, serviceResult) => {
+    if (err) {
+      console.error('Error checking ServiceCode:', err);
+      res.status(500).json({ error: 'Error checking ServiceCode' });
+      return;
+    }
+
+    if (serviceResult.length === 0) {
+      res.status(400).json({ error: `ServiceCode ${ServiceCode} does not exist` });
+      return;
+    }
+
+    // Check if PlateNumber exists
+    const checkCarSql = 'SELECT * FROM Car WHERE PlateNumber = ?';
+    db.query(checkCarSql, [PlateNumber], (err, carResult) => {
+      if (err) {
+        console.error('Error checking PlateNumber:', err);
+        res.status(500).json({ error: 'Error checking PlateNumber' });
+        return;
+      }
+
+      if (carResult.length === 0) {
+        res.status(400).json({ error: `PlateNumber ${PlateNumber} does not exist` });
+        return;
+      }
+
+      // Insert into ServiceRecord
+      const sql = 'INSERT INTO ServiceRecord (RecordNumber, ServiceDate, ServiceCode, PlateNumber) VALUES (?, ?, ?, ?)';
+      db.query(sql, [RecordNumber, ServiceDate, ServiceCode, PlateNumber], (err, result) => {
+        if (err) {
+          console.error('Error inserting data into the ServiceRecord table:', err);
+          res.status(500).json({ error: 'Error inserting data into the ServiceRecord table' });
+          return;
+        }
+        res.status(200).json({ message: 'Data inserted successfully into ServiceRecord table', result });
+      });
+    });
+  });
+});
+app.get('/cars', (req, res) => {
+  const sql = 'SELECT * FROM Car';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching cars:', err);
+      res.status(500).json({ error: 'Error fetching cars' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+
+app.put('/updatecar/:PlateNumber', (req, res) => {
+  const { PlateNumber } = req.params;
+  const { type, Model, ManufacturingYear, DriverPhone, MechanicName } = req.body;
+  const sql = 'UPDATE Car SET type = ?, Model = ?, ManufacturingYear = ?, DriverPhone = ?, MechanicName = ? WHERE PlateNumber = ?';
+  db.query(sql, [type, Model, ManufacturingYear, DriverPhone, MechanicName, PlateNumber], (err, result) => {
+    if (err) {
+      console.error('Error updating car:', err);
+      res.status(500).json({ error: 'Error updating car' });
+      return;
+    }
+    res.status(200).json({ message: 'Car updated successfully', result });
+  });
+});
+
+app.delete('/deletecar/:PlateNumber', (req, res) => {
+  const { PlateNumber } = req.params;
+  const sql = 'DELETE FROM Car WHERE PlateNumber = ?';
+  db.query(sql, [PlateNumber], (err, result) => {
+    if (err) {
+      console.error('Error deleting car:', err);
+      res.status(500).json({ error: 'Error deleting car' });
+      return;
+    }
+    res.status(200).json({ message: 'Car deleted successfully', result });
+  });
+});
+// Insert data into the Payment table
+app.post('/addpayment', (req, res) => {
+  const { PaymentNumber, AmountPaid, PaymentDate, RecordNumber } = req.body;
+  const sql = 'INSERT INTO Payment (PaymentNumber, AmountPaid, PaymentDate, RecordNumber) VALUES (?, ?, ?, ?)';
+  db.query(sql, [PaymentNumber, AmountPaid, PaymentDate, RecordNumber], (err, result) => {
+    if (err) {
+      console.error('Error inserting data into the Payment table:', err);
+      res.status(500).json({ error: 'Error inserting data into the Payment table' });
+      return;
+    }
+    res.status(200).json({ message: 'Data inserted successfully into Payment table', result });
+  });
+});
+
+app.get('/getcar', (req, res) => {
+  const sql = 'SELECT * FROM car';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching data from the database:', err);
+      res.status(500).json({ error: 'Error fetching data from the database' });
+      return;
+    }
+    else{
+    res.status(200).json(result);
+    }
+  });
+});
+
+ 
+// Get all data from the Service table
+app.get('/getservices', (req, res) => {
+  const sql = 'SELECT * FROM Service';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching data from the Service table:', err);
+      res.status(500).json({ error: 'Error fetching data from the Service table' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+// Get all data from the Car table
+app.get('/getcars', (req, res) => {
+  const sql = 'SELECT * FROM Car';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching data from the Car table:', err);
+      res.status(500).json({ error: 'Error fetching data from the Car table' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+// Get all data from the ServiceRecord table
+app.get('/getservicerecords', (req, res) => {
+  const sql = 'SELECT * FROM ServiceRecord';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching data from the ServiceRecord table:', err);
+      res.status(500).json({ error: 'Error fetching data from the ServiceRecord table' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+// Get all data from the Payment table
+app.get('/getpayments', (req, res) => {
+  const sql = 'SELECT * FROM Payment';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching data from the Payment table:', err);
+      res.status(500).json({ error: 'Error fetching data from the Payment table' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+// Retrieve all records from the ServiceRecord table
+app.get('/servicerecords', (req, res) => {
+  const sql = 'SELECT * FROM ServiceRecord';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error retrieving data from the ServiceRecord table:', err);
+      res.status(500).json({ error: 'Error retrieving data from the ServiceRecord table' });
+      return;
+    }
+    res.status(200).json(result);
+  });
+});
+
+// Update a specific record in the ServiceRecord table
+app.put('/updateservicerecord/:RecordNumber', (req, res) => {
+  const { RecordNumber } = req.params;
+  const { ServiceDate, ServiceCode, PlateNumber } = req.body;
+  const sql = 'UPDATE ServiceRecord SET ServiceDate = ?, ServiceCode = ?, PlateNumber = ? WHERE RecordNumber = ?';
+  db.query(sql, [ServiceDate, ServiceCode, PlateNumber, RecordNumber], (err, result) => {
+    if (err) {
+      console.error('Error updating data in the ServiceRecord table:', err);
+      res.status(500).json({ error: 'Error updating data in the ServiceRecord table' });
+      return;
+    }
+    res.status(200).json({ message: 'ServiceRecord updated successfully', result });
+  });
+});
+
+// Delete a specific record from the ServiceRecord table
+app.delete('/deleteservicerecord/:RecordNumber', (req, res) => {
+  const { RecordNumber } = req.params;
+  const sql = 'DELETE FROM ServiceRecord WHERE RecordNumber = ?';
+  db.query(sql, [RecordNumber], (err, result) => {
+    if (err) {
+      console.error('Error deleting data from the ServiceRecord table:', err);
+      res.status(500).json({ error: 'Error deleting data from the ServiceRecord table' });
+      return;
+    }
+    res.status(200).json({ message: 'ServiceRecord deleted successfully', result });
+  });
+});
+
+
+
+const bcrypt = require('bcrypt');
+
+// Register a new user
+app.post('/register', async (req, res) => {
+  const { Username, Password } = req.body;
+console.log(Username, Password);
+
+  try {
+    // Hash the password before storing it
+    const hashedPassword = await bcrypt.hash(Password, 10);
+
+    const sql = 'INSERT INTO User (Username, Password) VALUES (?, ?)';
+    db.query(sql, [Username, hashedPassword], (err, result) => {
+      if (err) {
+        console.error('Error registering user:', err);
+        res.status(500).json({ error: 'Error registering user' });
+        return;
+      }
+      res.status(200).json({ message: 'User registered successfully', result });
+    });
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    res.status(500).json({ error: 'Error hashing password' });
+  }
+});
+
+
+
+
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  // Check if username and password are provided
+  if (!username || !password) {
+    return res.status(400).json({ status: 400, message: "Username and password are required" });
+  }
+
+  const sql = `SELECT * FROM User WHERE Username = ?`;
+
+  db.query(sql, [username], async (err, result) => {
+    if (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ status: 500, message: "Internal server error", error: err });
+    }
+
+    // Check if user exists
+    if (result.length === 0) {
+      return res.status(401).json({ status: 401, message: "Invalid username or password" });
+    }
+
+    const user = result[0];
+
+    try {
+      // Compare the provided password with the hashed password in the database
+      const isPasswordMatch = await bcrypt.compare(password, user.Password);
+
+      if (isPasswordMatch) {
+        // Set session data
+        req.session.userlogin = true;
+        req.session.userId = user.id;
+        req.session.username = user.Username;
+
+        return res.status(200).json({
+          status: 200,
+          message: "Login successful",
+          data: { username: user.Username },
         });
+      } else {
+        return res.status(401).json({ status: 401, message: "Invalid username or password" });
+      }
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      return res.status(500).json({ status: 500, message: "Error comparing passwords", error });
     }
-const userId = req.session.userId
+  });
+});
 
+// Get daily report
+app.get('/dailyreport', (req, res) => {
+  const sql = `
+    SELECT 
+      Car.PlateNumber,
+      Service.ServiceNumber,
+      Service.ServicePrice,
+      Payment.AmountPaid,
+      Payment.PaymentDate
+    FROM 
+      ServiceRecord
+    INNER JOIN 
+      Car ON ServiceRecord.PlateNumber = Car.PlateNumber
+    INNER JOIN 
+      Service ON ServiceRecord.ServiceCode = Service.ServiceCode
+    INNER JOIN 
+      Payment ON ServiceRecord.RecordNumber = Payment.RecordNumber
+    WHERE 
+      Payment.PaymentDate = CURDATE(); -- Filter for today's date
+  `;
 
-
-const {productName , productPrice } = req.body
-
-const sql = `insert into products (productName,productPrice,userId) values(?,?,?)`
-
-db.query(sql , [productName,productPrice,userId],(err,result)=>{
-if(err){
-res.status(500).send({      
-status:500,
-message:"iternal serve eror",
-error:err
-})
-}
-else{
-res.status(200).send({
-status:200,
-data:result,
-message:"inserted successsful",result
-})
-}
-})
-}
-)
-
-
-
-app.get('/productid',async(req,res)=>{
-   if(!req.session.userlogin){
-    return res.status(401).send({
-        status:401,
-        message:"unauthorized"
-    })
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching daily report:', err);
+      res.status(500).json({ error: 'Error fetching daily report' });
+      return;
     }
-    const userId = req.session.userId
-    const sql = 'SELECT users.*, products.* FROM users JOIN products ON users.id = products.userId WHERE users.id =  ?'
+    res.status(200).json(result);
+  });
+});
 
-    // const sql = 'SELECT * from products' 
-
-
-    db.query(sql,[userId],(err,result)=>{
-    if(err){
-    res.status(500).send({
-    data:err,
-    status:500,
-    message:"serve error"
-    })
-    }
-
-    else{
-    res.status(200).send({
-    product:result,
-    status:200,
-    
-    })
-    }
-    })
-
-})
-
-app.get('/product',(req,res)=>{
-   if(!req.session.userlogin){
-    return res.status(401).send({
-        status:401,
-        message:"unauthorized"
-    })
-    }
-    const sql = 'SELECT products.* FROM products'
-    // const sql = 'SELECT * from products' 
-
-
-    db.query(sql,(err,result)=>{
-    if(err){
-    res.status(500).send({
-    data:err,
-    status:500,
-    message:"serve error"
-    })
-    }
-
-    else{
-    res.status(200).send({
-    product:result,
-    status:200,
-    
-    })
-    }
-    })
-
-})
-
-
-
-app.get('/sumPrice',(req,res)=>{
-
-const sql = 'select SUM(productPrice) as totalPrice from products'
-db.query(sql,(err,result)=>{
-if(err){    
-res.status(500).send({
-data:err,   
-status:500,
-message:"serve error"
-})
-}
-else{
-res.status(200).send({
-totalPrice:result[0].totalPrice,
-status:200,
-
-})
-}
-}
-)
-})
-app.listen(3000,()=>{
-console.log("http://localhost:3000")
-})
+app.listen(3000, () => {
+  console.log('Server is running on port http://localhost:3000');
+});
